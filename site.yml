@@ -20,18 +20,64 @@
 - hosts: web_servers
   become: true
   tasks:
-   
-  - name: install apache on web servers
+
+  - name: install apache on Ubuntu
+    tags: apache,ubuntu
     ansible.builtin.apt:
       name:
         - apache2
         - libapache2-mod-php
     when: ansible_distribution == "Ubuntu"
 
+  - name: install apache on Fedora
+    tags: apache,fedora
+    ansible.builtin.dnf:
+      name:
+        - httpd
+        - php
+    when: ansible_distribution == "Fedora"
+
+  - name: Start apache on Ubuntu
+    ansible.builtin.service:
+      name: apache2
+      state: started
+    when: ansible_distribution == "Ubuntu"
+
+  - name: Start apache on Fedora
+    ansible.builtin.service:
+      name: httpd
+      state: started
+    when: ansible_distribution == "Fedora"
+
+
+  - name: copy html file
+    tags: apache,ubuntu
+    ansible.builtin.copy:
+      src: default_site.html
+      dest: /var/www/html/index.html
+      owner: root
+      group: root
+      mode: 0644
+  - name: change email address for admin
+    tags: apache,fedora
+    ansible.builtin.lineinfile:
+      path: /etc/httpd/conf/httpd.conf
+      regexp: '^ServerAdmin'
+      line: ServerAdmin contact@hassanbouba.local
+    when: ansible_distribution == "Fedora"
+    register: httpd
+
+  - name: restart httpd Fedora
+    tags: apache,fedora
+    ansible.builtin.service:
+      name: httpd
+      state: restarted
+    when: httpd.changed
+
 - hosts: db_servers
   become: true
   tasks:
-   
+
   - name: install mariaDB on db servers
     tags: db
     ansible.builtin.dnf:
